@@ -1,0 +1,95 @@
+{
+    "config": {
+        "name": "run request with functions",
+        "base_url": "https://postman-echo.com",
+        "variables": {
+            "a": 12.3,
+            "b": 3.45,
+            "n": 5
+        }
+    },
+    "teststeps": [
+        {
+            "name": "waiting for all users",
+            "rendezvous": {
+                "name": "rend0",
+                "percent": 1
+            }
+        },
+        {
+            "name": "get with params",
+            "request": {
+                "method": "GET",
+                "url": "/get",
+                "params": {
+                    "foo1": "${gen_random_string($n)}",
+                    "foo2": "${max($a, $b)}"
+                },
+                "headers": {
+                    "User-Agent": "HttpRunnerPlus"
+                }
+            },
+            "extract": {
+                "varFoo1": "body.args.foo1"
+            },
+            "validate": [
+                {
+                    "check": "status_code",
+                    "assert": "equals",
+                    "expect": 200,
+                    "msg": "check status code"
+                }
+            ]
+        },
+        {
+            "name": "rendezvous1",
+            "rendezvous": {
+                "name": "rend1",
+                "number": 500,
+                "timeout": 3000
+            }
+        },
+        {
+            "name": "post json data with functions",
+            "request": {
+                "method": "POST",
+                "url": "/post",
+                "headers": {
+                    "User-Agent": "HttpRunnerPlus"
+                },
+                "body": {
+                    "foo1": "${gen_random_string($n)}",
+                    "foo2": "${max($a, $b)}"
+                }
+            },
+            "validate": [
+                {
+                    "check": "status_code",
+                    "assert": "equals",
+                    "expect": 200,
+                    "msg": "check status code"
+                },
+                {
+                    "check": "body.json.foo1",
+                    "assert": "length_equals",
+                    "expect": 5,
+                    "msg": "check args foo1"
+                },
+                {
+                    "check": "body.json.foo2",
+                    "assert": "equals",
+                    "expect": 12.3,
+                    "msg": "check args foo2"
+                }
+            ]
+        },
+        {
+            "name": "rendezvous2",
+            "rendezvous": {
+                "name": "rend2",
+                "number": 100,
+                "timeout": 2000
+            }
+        }
+    ]
+}

@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -105,6 +107,7 @@ func (r *HRPRunner) Run(testcases ...ITestCase) error {
 			log.Error().Interface("parameters", cfg.Parameters).Err(err).Msg("parse config parameters failed")
 			return err
 		}
+		initRendezvous(testcase, 0)
 		// 在runner模式下，指定整体策略，cfg.ParametersSetting.Iterators仅包含一个CartesianProduct的迭代器
 		for it := cfg.ParametersSetting.Iterators[0]; it.HasNext(); {
 			// iterate through all parameter iterators and update case variables
@@ -299,7 +302,95 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 		stepType: stepTypeRendezvous,
 		success:  true,
 	}
+
+	// disable rendezvous in runner mode
+	if rend.Number == 0 {
+		return nil, nil
+	}
+	// fixme: activate rendezvous sequentially after spawn done
+	// if !rend.isSpawnDone {
+	// 	return stepResult, nil
+	// }
+	if !rend.isActivated {
+		rend.isActivated = true
+	}
+	// pass current rendezvous if already released
+	if rend.isReleased {
+		return stepResult, nil
+	}
+	// check current number at rendezvous before updating to avoid negative WaitGroup counter
+	if rend.cnt < rend.Number {
+		rend.progress.Done()
+		atomic.AddInt64(&rend.cnt, 1)
+		rend.msg <- struct{}{}
+		for !rend.isReleased {
+			// block current goroutine until rendezvous released
+		}
+	}
 	return stepResult, nil
+}
+
+func initRendezvous(testcase *TestCase, total int64) {
+	tCase, _ := testcase.ToTCase()
+	// init all rendezvous step by step
+	for _, step := range tCase.TestSteps {
+		if step.Rendezvous != nil {
+			rend := step.Rendezvous
+
+			// either number or percent should be correctly put, otherwise set to default (total)
+			if rend.Number == 0 && rend.Percent > 0 && rend.Percent <= defaultPercent {
+				rend.Number = int64(rend.Percent * float32(total))
+			} else if rend.Number > 0 && rend.Number <= total && rend.Percent == 0 {
+				rend.Percent = float32(rend.Number) / float32(total)
+			} else {
+				rend.Number = total
+				rend.Percent = defaultPercent
+			}
+
+			if rend.Timeout > 0 {
+				rend.timeout = time.Duration(rend.Timeout)
+			} else {
+				rend.timeout = time.Duration(defaultTimeout)
+			}
+
+			rend.progress = &sync.WaitGroup{}
+			rend.progress.Add(int(rend.Number))
+			rend.msg = make(chan struct{})
+		}
+	}
+}
+
+func checkRendezvous(testcase *TestCase) {
+	tCase, _ := testcase.ToTCase()
+	for _, step := range tCase.TestSteps {
+		if step.Rendezvous != nil {
+			go checkOneRendezvous(step.Rendezvous)
+		}
+	}
+}
+
+func checkOneRendezvous(rend *Rendezvous) bool {
+	for !rend.isActivated {
+	}
+	stop := make(chan struct{})
+	timer := time.NewTimer(rend.timeout)
+	go func() {
+		rend.progress.Wait()
+		rend.isReleased = true
+		close(stop)
+	}()
+	for {
+		select {
+		case <-rend.msg:
+			timer.Reset(rend.timeout)
+		case <-stop:
+			log.Warn().Msg(strconv.Itoa(int(rend.cnt)) + " vusers released at " + rend.Name)
+			return true
+		case <-timer.C:
+			log.Warn().Msg(rend.Name + " time's up")
+			return false
+		}
+	}
 }
 
 func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err error) {
