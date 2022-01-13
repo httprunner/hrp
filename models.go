@@ -142,11 +142,28 @@ type Transaction struct {
 	Name string          `json:"name" yaml:"name"`
 	Type transactionType `json:"type" yaml:"type"`
 }
+
+const (
+	defaultTimeout int64 = 5000
+	defaultPercent float32 = 1.0
+)
+
+type RendezvousState struct {
+	cnt         int64
+	isActivated bool
+	isReleased  bool
+	isSpawnDone bool
+	timeout     time.Duration
+	progress    *sync.WaitGroup
+	msg         chan struct{}
+}
+
 type Rendezvous struct {
 	Name    string  `json:"name" yaml:"name"`                           // required
 	Percent float32 `json:"percent,omitempty" yaml:"percent,omitempty"` // default to 1(100%)
-	Number  int64   `json:"number,omitempty" yaml:"number,omitempty"`
-	Timeout int64   `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds
+	Number  int64   `json:"number,omitempty" yaml:"number,omitempty"`   // vuser number threshold
+	Timeout int64   `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds, timeout between each vuser
+	RendezvousState
 }
 
 // TCase represents testcase data structure.

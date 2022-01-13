@@ -14,6 +14,7 @@ func NewBoomer(spawnCount int, spawnRate float64) *HRPBoomer {
 	b := &HRPBoomer{
 		Boomer: boomer.NewStandaloneBoomer(spawnCount, spawnRate),
 		debug:  false,
+		count:  int64(spawnCount),
 	}
 	return b
 }
@@ -21,6 +22,7 @@ func NewBoomer(spawnCount int, spawnRate float64) *HRPBoomer {
 type HRPBoomer struct {
 	*boomer.Boomer
 	debug bool
+	count int64
 }
 
 // SetDebug configures whether to log HTTP request and response content.
@@ -51,8 +53,10 @@ func (b *HRPBoomer) Run(testcases ...ITestCase) {
 		if err != nil {
 			panic(err)
 		}
+		initRendezvous(testcase, b.count)
 		task := b.convertBoomerTask(testcase)
 		taskSlice = append(taskSlice, task)
+		go checkRendezvous(testcase)
 	}
 	b.Boomer.Run(taskSlice...)
 }
@@ -114,7 +118,11 @@ func (b *HRPBoomer) convertBoomerTask(testcase *TestCase) *boomer.Task {
 					}
 				} else if stepData.stepType == stepTypeRendezvous {
 					// rendezvous
-					// TODO: implement rendezvous in boomer
+					// TODO: support rendezvous elapse report
+					rend := step.ToStruct().Rendezvous
+					if !rend.isSpawnDone && b.IsSpawnDone() {
+						rend.isSpawnDone = true
+					}
 				} else {
 					// request or testcase step
 					b.RecordSuccess(step.Type(), step.Name(), stepData.elapsed, stepData.contentSize)

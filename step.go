@@ -362,3 +362,27 @@ func (s *StepRendezvous) Type() string {
 func (s *StepRendezvous) ToStruct() *TStep {
 	return s.step
 }
+
+// InsertRendezvousByNumber inserts a rendezvous by indicating  number
+func (s *StepRequest) InsertRendezvousByNumber(name string, number int64, timeout int64) *StepRendezvous {
+	s.step.Rendezvous = &Rendezvous{
+		Name: name,
+		Number: number,
+		Timeout: timeout,
+	}
+	return &StepRendezvous{
+		step: s.step,
+	}
+}
+
+// InsertRendezvousByPercent inserts a rendezvous by indicating percent (the ratio of needed number to total number)
+func (s *StepRequest) InsertRendezvousByPercent(name string, percent float32, timeout int64) *StepRendezvous {
+	s.step.Rendezvous = &Rendezvous{
+		Name: name,
+		Percent: percent,
+		Timeout: timeout,
+	}
+	return &StepRendezvous{
+		step: s.step,
+	}
+}
