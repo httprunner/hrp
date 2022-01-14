@@ -388,7 +388,6 @@ func checkOneRendezvous(rend *Rendezvous) bool {
 			log.Warn().Msg(strconv.Itoa(int(rend.cnt)) + " vusers released at " + rend.Name)
 			return true
 		case <-timer.C:
-			fmt.Println(rend.timeout)
 			log.Warn().Msg(rend.Name + " time's up")
 			return false
 		}

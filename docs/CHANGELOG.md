@@ -1,5 +1,7 @@
 # Release History
 
+- feat: support rendezvous for load testing
+
 ## v0.5.1 (2022-01-13)
 
 - feat: support specifying running cycles for load testing
