@@ -348,9 +348,10 @@ func initRendezvous(testcase *TestCase, total int64) {
 			}
 
 			if rend.Timeout > 0 {
-				rend.timeout = time.Duration(rend.Timeout)
+				rend.timeout = time.Duration(rend.Timeout) * time.Millisecond
 			} else {
-				rend.timeout = time.Duration(defaultTimeout)
+				rend.Timeout = defaultTimeout
+				rend.timeout = time.Duration(defaultTimeout) * time.Millisecond
 			}
 
 			rend.progress = &sync.WaitGroup{}
@@ -387,6 +388,7 @@ func checkOneRendezvous(rend *Rendezvous) bool {
 			log.Warn().Msg(strconv.Itoa(int(rend.cnt)) + " vusers released at " + rend.Name)
 			return true
 		case <-timer.C:
+			fmt.Println(rend.timeout)
 			log.Warn().Msg(rend.Name + " time's up")
 			return false
 		}
