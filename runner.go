@@ -290,6 +290,21 @@ func (r *caseRunner) runStepTransaction(transaction *Transaction) (stepResult *s
 	return stepResult, nil
 }
 
+func (r *caseRunner) isPreRendezvousReleased(rendezvous *Rendezvous) bool {
+	tConfig := r.Config.ToStruct()
+	for _, preRendezvous := range tConfig.RendezvousList {
+		if preRendezvous == rendezvous {
+			return true
+		}
+		if preRendezvous.isReleased {
+			continue
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, err error) {
 	log.Info().
 		Str("name", rend.Name).
@@ -307,16 +322,13 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 	if rend.Number == 0 {
 		return nil, nil
 	}
-	// fixme: activate rendezvous sequentially after spawn done
-	// if !rend.isSpawnDone {
-	// 	return stepResult, nil
-	// }
+	// activate rendezvous sequentially after spawn done
+	// pass current rendezvous if already released
+	if !rend.isSpawnDone || !r.isPreRendezvousReleased(rend) || rend.isReleased{
+		return stepResult, nil
+	}
 	if !rend.isActivated {
 		rend.isActivated = true
-	}
-	// pass current rendezvous if already released
-	if rend.isReleased {
-		return stepResult, nil
 	}
 	// check current number at rendezvous before updating to avoid negative WaitGroup counter
 	if rend.cnt < rend.Number {
@@ -332,6 +344,7 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 
 func initRendezvous(testcase *TestCase, total int64) {
 	tCase, _ := testcase.ToTCase()
+	tConfig := tCase.Config
 	// init all rendezvous step by step
 	for _, step := range tCase.TestSteps {
 		if step.Rendezvous != nil {
@@ -347,16 +360,16 @@ func initRendezvous(testcase *TestCase, total int64) {
 				rend.Percent = defaultPercent
 			}
 
-			if rend.Timeout > 0 {
-				rend.timeout = time.Duration(rend.Timeout) * time.Millisecond
-			} else {
+			if rend.Timeout <= 0 {
 				rend.Timeout = defaultTimeout
-				rend.timeout = time.Duration(defaultTimeout) * time.Millisecond
 			}
 
 			rend.progress = &sync.WaitGroup{}
 			rend.progress.Add(int(rend.Number))
 			rend.msg = make(chan struct{})
+
+			// register rendezvous sequentially in testcase config
+			tConfig.RendezvousList = append(tConfig.RendezvousList, rend)
 		}
 	}
 }
@@ -372,23 +385,38 @@ func checkRendezvous(testcase *TestCase) {
 
 func checkOneRendezvous(rend *Rendezvous) bool {
 	for !rend.isActivated {
+		// block current checking until rendezvous activated
 	}
 	stop := make(chan struct{})
-	timer := time.NewTimer(rend.timeout)
+	timeout := time.Duration(rend.Timeout)* time.Millisecond
+	timer := time.NewTimer(timeout)
 	go func() {
+		defer close(stop)
 		rend.progress.Wait()
-		rend.isReleased = true
-		close(stop)
 	}()
 	for {
 		select {
 		case <-rend.msg:
-			timer.Reset(rend.timeout)
+			timer.Reset(timeout)
 		case <-stop:
-			log.Warn().Msg(strconv.Itoa(int(rend.cnt)) + " vusers released at " + rend.Name)
+			rend.isReleased = true
+			log.Warn().
+				Str("name", rend.Name).
+				Float32("percent", rend.Percent).
+				Int64("number", rend.Number).
+				Int64("timeout(ms)", rend.Timeout).
+				Str("reason", "rendezvous release condition satisfied").
+				Msg("rendezvous released")
 			return true
 		case <-timer.C:
-			log.Warn().Msg(rend.Name + " time's up")
+			rend.isReleased = true
+			log.Warn().
+				Str("name", rend.Name).
+				Float32("percent", rend.Percent).
+				Int64("number", rend.Number).
+				Int64("timeout(ms)", rend.Timeout).
+				Str("reason", "time's up").
+				Msg("rendezvous released")
 			return false
 		}
 	}
