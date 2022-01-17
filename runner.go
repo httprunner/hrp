@@ -324,7 +324,7 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 	}
 	// activate rendezvous sequentially after spawn done
 	// pass current rendezvous if already released
-	if !rend.isSpawnDone || !r.isPreRendezvousReleased(rend) || rend.isReleased{
+	if !rend.isSpawnDone || !r.isPreRendezvousReleased(rend) || rend.isReleased {
 		return stepResult, nil
 	}
 	if !rend.isActivated {
@@ -388,7 +388,7 @@ func checkOneRendezvous(rend *Rendezvous) bool {
 		// block current checking until rendezvous activated
 	}
 	stop := make(chan struct{})
-	timeout := time.Duration(rend.Timeout)* time.Millisecond
+	timeout := time.Duration(rend.Timeout) * time.Millisecond
 	timer := time.NewTimer(timeout)
 	go func() {
 		defer close(stop)

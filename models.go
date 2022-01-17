@@ -28,13 +28,13 @@ type TConfig struct {
 	Export            []string               `json:"export,omitempty" yaml:"export,omitempty"`
 	Weight            int                    `json:"weight,omitempty" yaml:"weight,omitempty"`
 	Path              string                 `json:"path,omitempty" yaml:"path,omitempty"` // testcase file path
-	RendezvousList	  []*Rendezvous          `json:"rendezvous_list,omitempty" yaml:"rendezvous_list,omitempty"`
+	RendezvousList    []*Rendezvous          `json:"rendezvous_list,omitempty" yaml:"rendezvous_list,omitempty"`
 }
 
 type TParamsConfig struct {
 	Strategy  interface{} `json:"strategy,omitempty" yaml:"strategy,omitempty"`
 	Iteration int         `json:"iteration,omitempty" yaml:"iteration,omitempty"`
-	Iterators []*Iterator `json:"parameterIterator,omitempty" yaml:"parameterIterator,omitempty"` //保存参数的迭代器
+	Iterators []*Iterator `json:"parameterIterator,omitempty" yaml:"parameterIterator,omitempty"` // 保存参数的迭代器
 }
 
 const (
@@ -145,7 +145,7 @@ type Transaction struct {
 }
 
 const (
-	defaultTimeout int64 = 5000
+	defaultTimeout int64   = 5000
 	defaultPercent float32 = 1.0
 )
 
