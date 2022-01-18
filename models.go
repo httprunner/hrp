@@ -28,7 +28,7 @@ type TConfig struct {
 	Export            []string               `json:"export,omitempty" yaml:"export,omitempty"`
 	Weight            int                    `json:"weight,omitempty" yaml:"weight,omitempty"`
 	Path              string                 `json:"path,omitempty" yaml:"path,omitempty"` // testcase file path
-	RendezvousList    []*Rendezvous          `json:"rendezvous_list,omitempty" yaml:"rendezvous_list,omitempty"`
+	rendezvousList    []*Rendezvous
 }
 
 type TParamsConfig struct {

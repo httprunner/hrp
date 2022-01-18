@@ -297,7 +297,7 @@ func (r *caseRunner) runStepTransaction(transaction *Transaction) (stepResult *s
 
 func (r *caseRunner) isPreRendezvousReleased(rendezvous *Rendezvous) bool {
 	tConfig := r.Config.ToStruct()
-	for _, preRendezvous := range tConfig.RendezvousList {
+	for _, preRendezvous := range tConfig.rendezvousList {
 		if preRendezvous == rendezvous {
 			return true
 		}
@@ -334,6 +334,7 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 	}
 	if !rend.isActivated {
 		rend.isActivated = true
+		// FIXME: activateChan maybe closed concurrently ?
 		close(rend.activateChan)
 	}
 	// check current number at rendezvous before updating to avoid negative WaitGroup counter
@@ -376,59 +377,80 @@ func initRendezvous(testcase *TestCase, total int64) {
 			rend.msg = make(chan struct{})
 
 			// register rendezvous sequentially in testcase config
-			tConfig.RendezvousList = append(tConfig.RendezvousList, rend)
+			tConfig.rendezvousList = append(tConfig.rendezvousList, rend)
 		}
 	}
 }
 
 func checkRendezvous(testcase *TestCase) {
 	tCase, _ := testcase.ToTCase()
+	rendList := tCase.Config.rendezvousList
+	rendNum := len(rendList)
 	for _, step := range tCase.TestSteps {
-		if step.Rendezvous != nil {
-			go checkOneRendezvous(step.Rendezvous)
+		if step.Rendezvous == nil {
+			continue
+		}
+		if step.Rendezvous == rendList[rendNum-1] {
+			go checkOneRendezvous(step.Rendezvous, rendList, true)
+		} else {
+			go checkOneRendezvous(step.Rendezvous, rendList, false)
 		}
 	}
 }
 
-func checkOneRendezvous(rend *Rendezvous) {
-	// block current checking until rendezvous activated
-	<-rend.activateChan
-	stop := make(chan struct{})
-	timeout := time.Duration(rend.Timeout) * time.Millisecond
-	timer := time.NewTimer(timeout)
-	go func() {
-		defer close(stop)
-		rend.progress.Wait()
-	}()
-	for !rend.isReleased {
-		select {
-		case <-rend.msg:
-			timer.Reset(timeout)
-		case <-stop:
-			rend.isReleased = true
-			close(rend.releaseChan)
-			log.Warn().
-				Str("name", rend.Name).
-				Float32("percent", rend.Percent).
-				Int64("number", rend.Number).
-				Int64("timeout(ms)", rend.Timeout).
-				Int64("cnt", rend.cnt).
-				Str("reason", "rendezvous release condition satisfied").
-				Msg("rendezvous released")
-		case <-timer.C:
-			rend.isReleased = true
-			close(rend.releaseChan)
-			log.Warn().
-				Str("name", rend.Name).
-				Float32("percent", rend.Percent).
-				Int64("number", rend.Number).
-				Int64("timeout(ms)", rend.Timeout).
-				Int64("cnt", rend.cnt).
-				Str("reason", "time's up").
-				Msg("rendezvous released")
+func checkOneRendezvous(rend *Rendezvous, rendList []*Rendezvous, isLastRendezvous bool) {
+	for {
+		// cycle start: block current checking until current rendezvous activated
+		<-rend.activateChan
+		stop := make(chan struct{})
+		timeout := time.Duration(rend.Timeout) * time.Millisecond
+		timer := time.NewTimer(timeout)
+		go func() {
+			defer close(stop)
+			rend.progress.Wait()
+		}()
+		for !rend.isReleased {
+			select {
+			case <-rend.msg:
+				timer.Reset(timeout)
+			case <-stop:
+				rend.isReleased = true
+				close(rend.releaseChan)
+				log.Warn().
+					Str("name", rend.Name).
+					Float32("percent", rend.Percent).
+					Int64("number", rend.Number).
+					Int64("timeout(ms)", rend.Timeout).
+					Int64("cnt", rend.cnt).
+					Str("reason", "rendezvous release condition satisfied").
+					Msg("rendezvous released")
+			case <-timer.C:
+				rend.isReleased = true
+				close(rend.releaseChan)
+				log.Warn().
+					Str("name", rend.Name).
+					Float32("percent", rend.Percent).
+					Int64("number", rend.Number).
+					Int64("timeout(ms)", rend.Timeout).
+					Int64("cnt", rend.cnt).
+					Str("reason", "time's up").
+					Msg("rendezvous released")
+			}
+		}
+		if isLastRendezvous {
+			for _, r := range rendList {
+				r.releaseChan = make(chan struct{})
+				r.isReleased = false
+				r.activateChan = make(chan struct{})
+				r.isActivated = false
+				r.cnt = 0
+				r.progress.Add(int(r.Number))
+			}
+		} else {
+			// cycle end: block current checking until the last rendezvous end
+			<-rendList[len(rendList)-1].releaseChan
 		}
 	}
-
 }
 
 func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err error) {

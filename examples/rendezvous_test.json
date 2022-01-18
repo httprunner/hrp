@@ -13,8 +13,7 @@
             "name": "waiting for all users",
             "rendezvous": {
                 "name": "rend0",
-                "percent": 0.1,
-                "timeout": 10000
+                "percent": 1
             }
         },
         {

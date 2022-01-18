@@ -26,7 +26,7 @@ var rendezvousTestcase = &hrp.TestCase{
 			Validate().
 			AssertEqual("status_code", 200, "check status code"),
 		hrp.NewStep("rendezvous1").
-			InsertRendezvousByNumber("rend1", 500, 3000),
+			InsertRendezvousByNumber("rend1", 400, 3000),
 		hrp.NewStep("post json data with functions").
 			POST("/post").
 			WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
@@ -36,7 +36,7 @@ var rendezvousTestcase = &hrp.TestCase{
 			AssertLengthEqual("body.json.foo1", 5, "check args foo1").
 			AssertEqual("body.json.foo2", 12.3, "check args foo2"),
 		hrp.NewStep("rendezvous2").
-			InsertRendezvousByNumber("rend2", 100, 2000),
+			InsertRendezvousByNumber("rend2", 200, 2000),
 	},
 }
 
