@@ -13,7 +13,8 @@
             "name": "waiting for all users",
             "rendezvous": {
                 "name": "rend0",
-                "percent": 1
+                "percent": 0.1,
+                "timeout": 10000
             }
         },
         {
@@ -45,7 +46,7 @@
             "name": "rendezvous1",
             "rendezvous": {
                 "name": "rend1",
-                "number": 500,
+                "number": 400,
                 "timeout": 3000
             }
         },
@@ -87,7 +88,7 @@
             "name": "rendezvous2",
             "rendezvous": {
                 "name": "rend2",
-                "number": 100,
+                "number": 200,
                 "timeout": 2000
             }
         }

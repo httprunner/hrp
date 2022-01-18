@@ -334,16 +334,16 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 	}
 	if !rend.isActivated {
 		rend.isActivated = true
+		close(rend.activateChan)
 	}
 	// check current number at rendezvous before updating to avoid negative WaitGroup counter
 	if rend.cnt < rend.Number {
 		rend.progress.Done()
 		atomic.AddInt64(&rend.cnt, 1)
 		rend.msg <- struct{}{}
-		for !rend.isReleased {
-			// block current goroutine until rendezvous released
-		}
 	}
+	// block current goroutine until rendezvous released
+	<-rend.releaseChan
 	return stepResult, nil
 }
 
@@ -369,6 +369,8 @@ func initRendezvous(testcase *TestCase, total int64) {
 				rend.Timeout = defaultTimeout
 			}
 
+			rend.releaseChan = make(chan struct{})
+			rend.activateChan = make(chan struct{})
 			rend.progress = &sync.WaitGroup{}
 			rend.progress.Add(int(rend.Number))
 			rend.msg = make(chan struct{})
@@ -388,10 +390,9 @@ func checkRendezvous(testcase *TestCase) {
 	}
 }
 
-func checkOneRendezvous(rend *Rendezvous) bool {
-	for !rend.isActivated {
-		// block current checking until rendezvous activated
-	}
+func checkOneRendezvous(rend *Rendezvous) {
+	// block current checking until rendezvous activated
+	<-rend.activateChan
 	stop := make(chan struct{})
 	timeout := time.Duration(rend.Timeout) * time.Millisecond
 	timer := time.NewTimer(timeout)
@@ -399,32 +400,35 @@ func checkOneRendezvous(rend *Rendezvous) bool {
 		defer close(stop)
 		rend.progress.Wait()
 	}()
-	for {
+	for !rend.isReleased {
 		select {
 		case <-rend.msg:
 			timer.Reset(timeout)
 		case <-stop:
 			rend.isReleased = true
+			close(rend.releaseChan)
 			log.Warn().
 				Str("name", rend.Name).
 				Float32("percent", rend.Percent).
 				Int64("number", rend.Number).
 				Int64("timeout(ms)", rend.Timeout).
+				Int64("cnt", rend.cnt).
 				Str("reason", "rendezvous release condition satisfied").
 				Msg("rendezvous released")
-			return true
 		case <-timer.C:
 			rend.isReleased = true
+			close(rend.releaseChan)
 			log.Warn().
 				Str("name", rend.Name).
 				Float32("percent", rend.Percent).
 				Int64("number", rend.Number).
 				Int64("timeout(ms)", rend.Timeout).
+				Int64("cnt", rend.cnt).
 				Str("reason", "time's up").
 				Msg("rendezvous released")
-			return false
 		}
 	}
+
 }
 
 func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err error) {

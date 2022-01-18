@@ -150,12 +150,14 @@ const (
 )
 
 type RendezvousState struct {
-	cnt         int64
-	isActivated bool
-	isReleased  bool
-	isSpawnDone bool
-	progress    *sync.WaitGroup
-	msg         chan struct{}
+	cnt          int64
+	isActivated  bool
+	isReleased   bool
+	isSpawnDone  bool
+	progress     *sync.WaitGroup
+	msg          chan struct{}
+	activateChan chan struct{}
+	releaseChan  chan struct{}
 }
 
 type Rendezvous struct {
