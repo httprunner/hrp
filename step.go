@@ -363,26 +363,30 @@ func (s *StepRendezvous) ToStruct() *TStep {
 	return s.step
 }
 
-// InsertRendezvousByNumber inserts a rendezvous by indicating  number
-func (s *StepRequest) InsertRendezvousByNumber(name string, number int64, timeout int64) *StepRendezvous {
+// Rendezvous creates a new rendezvous
+func (s *StepRequest) Rendezvous(name string) *StepRendezvous {
 	s.step.Rendezvous = &Rendezvous{
 		Name: name,
-		Number: number,
-		Timeout: timeout,
 	}
 	return &StepRendezvous{
 		step: s.step,
 	}
 }
 
-// InsertRendezvousByPercent inserts a rendezvous by indicating percent (the ratio of needed number to total number)
-func (s *StepRequest) InsertRendezvousByPercent(name string, percent float32, timeout int64) *StepRendezvous {
-	s.step.Rendezvous = &Rendezvous{
-		Name: name,
-		Percent: percent,
-		Timeout: timeout,
-	}
-	return &StepRendezvous{
-		step: s.step,
-	}
+// WithUserNumber sets the user number needed to release the current rendezvous
+func (s *StepRendezvous) WithUserNumber(number int64) *StepRendezvous {
+	s.step.Rendezvous.Number = number
+	return s
+}
+
+// WithUserPercent sets the user percent needed to release the current rendezvous
+func (s *StepRendezvous) WithUserPercent(percent float32) *StepRendezvous {
+	s.step.Rendezvous.Percent = percent
+	return s
+}
+
+// WithTimeout sets the timeout of duration between each user arriving at the current rendezvous
+func (s *StepRendezvous) WithTimeout(timeout int64) *StepRendezvous {
+	s.step.Rendezvous.Timeout = timeout
+	return s
 }

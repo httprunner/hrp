@@ -16,7 +16,8 @@ var rendezvousTestcase = &hrp.TestCase{
 		}),
 	TestSteps: []hrp.IStep{
 		hrp.NewStep("waiting for all users").
-			InsertRendezvousByPercent("rend0", 1, 0),
+			Rendezvous("rend0").
+			WithUserPercent(1),
 		hrp.NewStep("get with params").
 			GET("/get").
 			WithParams(map[string]interface{}{"foo1": "${gen_random_string($n)}", "foo2": "${max($a, $b)}"}).
@@ -26,7 +27,9 @@ var rendezvousTestcase = &hrp.TestCase{
 			Validate().
 			AssertEqual("status_code", 200, "check status code"),
 		hrp.NewStep("rendezvous1").
-			InsertRendezvousByNumber("rend1", 400, 3000),
+			Rendezvous("rend1").
+			WithUserNumber(400).
+			WithTimeout(3000),
 		hrp.NewStep("post json data with functions").
 			POST("/post").
 			WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
@@ -36,7 +39,9 @@ var rendezvousTestcase = &hrp.TestCase{
 			AssertLengthEqual("body.json.foo1", 5, "check args foo1").
 			AssertEqual("body.json.foo2", 12.3, "check args foo2"),
 		hrp.NewStep("rendezvous2").
-			InsertRendezvousByNumber("rend2", 200, 2000),
+			Rendezvous("rend2").
+			WithUserNumber(200).
+			WithTimeout(2000),
 	},
 }
 
