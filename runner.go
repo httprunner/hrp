@@ -353,32 +353,33 @@ func initRendezvous(testcase *TestCase, total int64) {
 	tConfig := tCase.Config
 	// init all rendezvous step by step
 	for _, step := range tCase.TestSteps {
-		if step.Rendezvous != nil {
-			rend := step.Rendezvous
-
-			// either number or percent should be correctly put, otherwise set to default (total)
-			if rend.Number == 0 && rend.Percent > 0 && rend.Percent <= defaultPercent {
-				rend.Number = int64(rend.Percent * float32(total))
-			} else if rend.Number > 0 && rend.Number <= total && rend.Percent == 0 {
-				rend.Percent = float32(rend.Number) / float32(total)
-			} else {
-				rend.Number = total
-				rend.Percent = defaultPercent
-			}
-
-			if rend.Timeout <= 0 {
-				rend.Timeout = defaultTimeout
-			}
-
-			rend.releaseChan = make(chan struct{})
-			rend.activateChan = make(chan struct{})
-			rend.progress = &sync.WaitGroup{}
-			rend.progress.Add(int(rend.Number))
-			rend.msg = make(chan struct{})
-
-			// register rendezvous sequentially in testcase config
-			tConfig.rendezvousList = append(tConfig.rendezvousList, rend)
+		if step.Rendezvous == nil {
+			continue
 		}
+		rend := step.Rendezvous
+
+		// either number or percent should be correctly put, otherwise set to default (total)
+		if rend.Number == 0 && rend.Percent > 0 && rend.Percent <= defaultPercent {
+			rend.Number = int64(rend.Percent * float32(total))
+		} else if rend.Number > 0 && rend.Number <= total && rend.Percent == 0 {
+			rend.Percent = float32(rend.Number) / float32(total)
+		} else {
+			rend.Number = total
+			rend.Percent = defaultPercent
+		}
+
+		if rend.Timeout <= 0 {
+			rend.Timeout = defaultTimeout
+		}
+
+		rend.releaseChan = make(chan struct{})
+		rend.activateChan = make(chan struct{})
+		rend.progress = &sync.WaitGroup{}
+		rend.progress.Add(int(rend.Number))
+		rend.msg = make(chan struct{})
+
+		// register rendezvous sequentially in testcase config
+		tConfig.rendezvousList = append(tConfig.rendezvousList, rend)
 	}
 }
 
