@@ -33,7 +33,7 @@ type TConfig struct {
 type TParamsConfig struct {
 	Strategy  interface{} `json:"strategy,omitempty" yaml:"strategy,omitempty"`
 	Iteration int         `json:"iteration,omitempty" yaml:"iteration,omitempty"`
-	Iterators []*Iterator `json:"parameterIterator,omitempty" yaml:"parameterIterator,omitempty"` //保存参数的迭代器
+	Iterators []*Iterator `json:"parameterIterator,omitempty" yaml:"parameterIterator,omitempty"` // 保存参数的迭代器
 }
 
 const (
@@ -142,11 +142,28 @@ type Transaction struct {
 	Name string          `json:"name" yaml:"name"`
 	Type transactionType `json:"type" yaml:"type"`
 }
+
+const (
+	defaultTimeout int64   = 5000
+	defaultPercent float32 = 1.0
+)
+
 type Rendezvous struct {
-	Name    string  `json:"name" yaml:"name"`                           // required
-	Percent float32 `json:"percent,omitempty" yaml:"percent,omitempty"` // default to 1(100%)
-	Number  int64   `json:"number,omitempty" yaml:"number,omitempty"`
-	Timeout int64   `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds
+	Name         string  `json:"name" yaml:"name"`                           // required
+	Percent      float32 `json:"percent,omitempty" yaml:"percent,omitempty"` // default to 1(100%)
+	Number       int64   `json:"number,omitempty" yaml:"number,omitempty"`   // vuser number threshold
+	Timeout      int64   `json:"timeout,omitempty" yaml:"timeout,omitempty"` // milliseconds, timeout between each vuser
+	isSpawnDone  bool
+	cnt          int64
+	timeout      time.Duration
+	timer        *time.Timer
+	wg           sync.WaitGroup
+	wgDone       chan struct{}
+	timeoutDone  chan struct{}
+	lock         sync.Mutex
+	activateFlag uint32
+	releaseFlag  uint32
+	isLast       bool
 }
 
 // TCase represents testcase data structure.

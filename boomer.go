@@ -2,6 +2,7 @@ package hrp
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jinzhu/copier"
@@ -56,6 +57,7 @@ func (b *HRPBoomer) Run(testcases ...ITestCase) {
 		if err != nil {
 			panic(err)
 		}
+		initRendezvous(testcase, int64(b.GetSpawnCount()))
 		task := b.convertBoomerTask(testcase)
 		taskSlice = append(taskSlice, task)
 	}
@@ -147,6 +149,25 @@ func (b *HRPBoomer) convertBoomerTask(testcase *TestCase) *boomer.Task {
 				} else if stepData.stepType == stepTypeRendezvous {
 					// rendezvous
 					// TODO: implement rendezvous in boomer
+					rend := step.ToStruct().Rendezvous
+					if !rend.isSpawnDone && b.IsSpawnDone() {
+						rend.isSpawnDone = true
+					}
+					if rend.isLast && atomic.LoadUint32(&rend.releaseFlag) == 1 {
+						rend.lock.Lock()
+						if atomic.LoadUint32(&rend.releaseFlag) == 1 {
+							tCase, _ := testcase.ToTCase()
+							for _, testStep := range tCase.TestSteps {
+								curStep := testStep.Rendezvous
+								if curStep == nil {
+									continue
+								}
+								atomic.StoreUint32(&curStep.activateFlag, 0)
+								atomic.StoreUint32(&curStep.releaseFlag, 0)
+							}
+						}
+						rend.lock.Unlock()
+					}
 				} else {
 					// request or testcase step
 					b.RecordSuccess(step.Type(), step.Name(), stepData.elapsed, stepData.contentSize)

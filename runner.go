@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -334,6 +335,24 @@ func (r *caseRunner) runStepTransaction(transaction *Transaction) (stepResult *s
 	return stepResult, nil
 }
 
+func (r *caseRunner) isPreRendezvousAllReleased(rend *Rendezvous) bool {
+	tCase, _ := r.ToTCase()
+	for _, step := range tCase.TestSteps {
+		preRend := step.Rendezvous
+		if preRend == nil {
+			continue
+		}
+		// meet current rendezvous, all previous rendezvous released, return true
+		if preRend == rend {
+			return true
+		}
+		if atomic.LoadUint32(&preRend.releaseFlag) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, err error) {
 	log.Info().
 		Str("name", rend.Name).
@@ -346,7 +365,92 @@ func (r *caseRunner) runStepRendezvous(rend *Rendezvous) (stepResult *stepData, 
 		stepType: stepTypeRendezvous,
 		success:  true,
 	}
+
+	// activate rendezvous sequentially after spawn done
+	if atomic.LoadUint32(&rend.releaseFlag) == 1 || !rend.isSpawnDone || !r.isPreRendezvousAllReleased(rend) {
+		return stepResult, nil
+	}
+
+	// activate rendezvous only once each turn, inspired by sync.Once
+	if atomic.LoadUint32(&rend.activateFlag) == 0 {
+		rend.lock.Lock()
+		if atomic.LoadUint32(&rend.activateFlag) == 0 {
+			atomic.StoreUint32(&rend.activateFlag, 1)
+			rend.cnt = 0
+			rend.timer.Reset(rend.timeout)
+			rend.wg.Add(int(rend.Number))
+			rend.wgDone = make(chan struct{})
+			rend.timeoutDone = make(chan struct{})
+		}
+		rend.lock.Unlock()
+	}
+
+	// check current number at rendezvous before wg.Done() to avoid negative WaitGroup counter
+	if atomic.LoadInt64(&rend.cnt) < rend.Number {
+		rend.lock.Lock()
+		atomic.AddInt64(&rend.cnt, 1)
+		log.Warn().Int64("cnt", rend.cnt).Str("name", rend.Name).Msg("===> new user arrived")
+		rend.wg.Done()
+		rend.timer.Reset(rend.timeout)
+		rend.lock.Unlock()
+		go func() {
+			rend.wg.Wait()
+			if atomic.LoadUint32(&rend.releaseFlag) == 0 {
+				rend.lock.Lock()
+				if atomic.LoadUint32(&rend.releaseFlag) == 0 {
+					atomic.StoreUint32(&rend.releaseFlag, 1)
+					close(rend.wgDone)
+				}
+				rend.lock.Unlock()
+			}
+		}()
+	}
+
+	// block current goroutine until current rendezvous released
+	select {
+	case <-rend.wgDone:
+		log.Warn().Str("name", rend.Name).Int64("number", rend.Number).Float32("percent", rend.Percent).Int64("timeout(ms)", rend.Timeout).Msg("wait done, release condition satisfied")
+	case <-rend.timeoutDone:
+		log.Warn().Str("name", rend.Name).Int64("number", rend.Number).Float32("percent", rend.Percent).Int64("timeout(ms)", rend.Timeout).Msg("timeout")
+	case <-rend.timer.C:
+		close(rend.timeoutDone)
+		log.Warn().Str("name", rend.Name).Int64("number", rend.Number).Float32("percent", rend.Percent).Int64("timeout(ms)", rend.Timeout).Msg("timeout")
+	}
 	return stepResult, nil
+}
+
+func initRendezvous(testcase *TestCase, total int64) {
+	tCase, _ := testcase.ToTCase()
+	var lastIndex int
+	// init all rendezvous step by step
+	for i, step := range tCase.TestSteps {
+		if step.Rendezvous == nil {
+			continue
+		}
+		rend := step.Rendezvous
+		lastIndex = i
+
+		// either number or percent should be correctly put, otherwise set to default (total)
+		if rend.Number == 0 && rend.Percent > 0 && rend.Percent <= defaultPercent {
+			rend.Number = int64(rend.Percent * float32(total))
+			if rend.Number == 0 {
+				rend.Number = total
+				rend.Percent = defaultPercent
+			}
+		} else if rend.Number > 0 && rend.Number <= total && rend.Percent == 0 {
+			rend.Percent = float32(rend.Number) / float32(total)
+		} else {
+			rend.Number = total
+			rend.Percent = defaultPercent
+		}
+
+		if rend.Timeout <= 0 {
+			rend.Timeout = defaultTimeout
+		}
+		rend.timeout = time.Duration(rend.Timeout) * time.Millisecond
+		rend.timer = time.NewTimer(rend.timeout)
+	}
+	tCase.TestSteps[lastIndex].Rendezvous.isLast = true
 }
 
 func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err error) {
