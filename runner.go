@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -72,6 +73,22 @@ type HRPRunner struct {
 	saveTests     bool
 	genHTMLReport bool
 	client        *http.Client
+}
+
+// SetClientTransport configures transport of http client for high concurrency load testing
+func (r *HRPRunner) SetClientTransport(maxConns int, disableKeepAlive bool, disableCompression bool) *HRPRunner {
+	log.Info().Int("maxConns", maxConns).Msg("[init] SetClientTransport")
+	r.client.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext: (&net.Dialer{
+			Timeout: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:        0,
+		MaxIdleConnsPerHost: maxConns,
+		DisableKeepAlives:   disableKeepAlive,
+		DisableCompression:  disableCompression,
+	}
+	return r
 }
 
 // SetFailfast configures whether to stop running when one step fails.
@@ -634,7 +651,6 @@ func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err erro
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
 		ProtoMinor: 1,
-		Close:      true, // prevent the connection from being re-used
 	}
 
 	// prepare request headers
