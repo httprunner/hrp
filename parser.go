@@ -41,8 +41,8 @@ func buildURL(baseURL, stepURL string) string {
 	return uStep.String()
 }
 
-func (p *parser) parseHeaders(rawHeaders map[string]string, variablesMapping map[string]interface{}) (map[string]string, error) {
-	parsedHeaders := make(map[string]string)
+func (p *parser) parseHeaders(rawHeaders map[string]interface{}, variablesMapping map[string]interface{}) (map[string]interface{}, error) {
+	parsedHeaders := make(map[string]interface{})
 	headers, err := p.parseData(rawHeaders, variablesMapping)
 	if err != nil {
 		return rawHeaders, err
@@ -278,6 +278,68 @@ func mergeVariables(variables, overriddenVariables map[string]interface{}) map[s
 		mergedVariables[k] = v
 	}
 	return mergedVariables
+}
+
+// merge two validators slice, the first validators have higher priority
+func mergeValidators(validators, overriddenValidators []Validator) []Validator {
+	if validators == nil {
+		return overriddenValidators
+	}
+	if overriddenValidators == nil {
+		return validators
+	}
+	var mergedValidators []Validator
+	validators = append(validators, overriddenValidators...)
+	for _, validator := range validators {
+		flag := true
+		for _, mergedValidator := range mergedValidators {
+			if validator.Check == mergedValidator.Check {
+				flag = false
+				break
+			}
+		}
+		if flag {
+			mergedValidators = append(mergedValidators, validator)
+		}
+	}
+	return mergedValidators
+}
+
+// merge two slices, the first slice have higher priority
+func mergeSlices(slice, overriddenSlice []string) []string {
+	if slice == nil {
+		return overriddenSlice
+	}
+	if overriddenSlice == nil {
+		return slice
+	}
+
+	for _, value := range overriddenSlice {
+		if !builtin.Contains(slice, value) {
+			slice = append(slice, value)
+		}
+	}
+	return slice
+}
+
+// extend teststep with api definition, teststep will merge and override api definition.
+func extendWithAPI(testStep *TStep, overriddenStep *TStep) {
+	// override api name
+	if testStep.Name == "" {
+		testStep.Name = overriddenStep.Name
+	}
+	// merge & override request
+	testStep.Request = overriddenStep.Request
+	// merge & override variables
+	testStep.Variables = mergeVariables(testStep.Variables, overriddenStep.Variables)
+	// merge & override extractors
+	testStep.Extract = mergeVariables(testStep.Extract, overriddenStep.Extract)
+	// merge & override validators
+	testStep.Validators = mergeValidators(testStep.Validators, overriddenStep.Validators)
+	// merge & override setupHooks
+	testStep.SetupHooks = mergeSlices(testStep.SetupHooks, overriddenStep.SetupHooks)
+	// merge & override teardownHooks
+	testStep.TeardownHooks = mergeSlices(testStep.TeardownHooks, overriddenStep.TeardownHooks)
 }
 
 var eval = goval.NewEvaluator()

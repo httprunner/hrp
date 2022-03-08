@@ -98,15 +98,15 @@ func (v *responseObject) extractField(value string) interface{} {
 	return result
 }
 
-func (v *responseObject) Extract(extractors map[string]string) map[string]interface{} {
+func (v *responseObject) Extract(extractors map[string]interface{}) map[string]interface{} {
 	if extractors == nil {
 		return nil
 	}
 
 	extractMapping := make(map[string]interface{})
 	for key, value := range extractors {
-		extractedValue := v.extractField(value)
-		log.Info().Str("from", value).Interface("value", extractedValue).Msg("extract value")
+		extractedValue := v.extractField(value.(string))
+		log.Info().Str("from", value.(string)).Interface("value", extractedValue).Msg("extract value")
 		log.Info().Str("variable", key).Interface("value", extractedValue).Msg("set variable")
 		extractMapping[key] = extractedValue
 	}

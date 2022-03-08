@@ -2,11 +2,12 @@ package hrp
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 
+	json "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
@@ -25,10 +26,18 @@ func loadFromJSON(path string) (*TCase, error) {
 		return nil, err
 	}
 
+	ts := &TStep{}
 	tc := &TCase{}
 	decoder := json.NewDecoder(bytes.NewReader(file))
 	decoder.UseNumber()
-	err = decoder.Decode(tc)
+	// compatible test scenario with a single API
+	e := json.Get(file, "request")
+	if e.LastError() == nil {
+		err = decoder.Decode(ts)
+		tc = ts.ToTCase()
+	} else {
+		err = decoder.Decode(tc)
+	}
 	return tc, err
 }
 
@@ -46,8 +55,14 @@ func loadFromYAML(path string) (*TCase, error) {
 		return nil, err
 	}
 
+	ts := &TStep{}
 	tc := &TCase{}
+	// compatible test scenario with a single API
 	err = yaml.Unmarshal(file, tc)
+	if tc.TestSteps == nil {
+		err = yaml.Unmarshal(file, ts)
+		tc = ts.ToTCase()
+	}
 	return tc, err
 }
 
@@ -56,11 +71,23 @@ func (tc *TCase) ToTestCase() (*TestCase, error) {
 		Config: tc.Config,
 	}
 	for _, step := range tc.TestSteps {
-		if step.Request != nil {
+		if step.API != "" {
+			testCasePath := &TestCasePath{Path: step.API}
+			tc, _ := testCasePath.ToTestCase()
+			extendWithAPI(step, tc.TestSteps[0].ToStruct())
+			testCase.TestSteps = append(testCase.TestSteps, &StepRequestWithOptionalArgs{
+				step: step,
+			})
+		} else if step.Request != nil {
 			testCase.TestSteps = append(testCase.TestSteps, &StepRequestWithOptionalArgs{
 				step: step,
 			})
 		} else if step.TestCase != nil {
+			if reflect.TypeOf(step.TestCase) == reflect.TypeOf("") {
+				testCasePath := &TestCasePath{Path: step.TestCase.(string)}
+				tc, _ := testCasePath.ToTestCase()
+				step.TestCase = tc
+			}
 			testCase.TestSteps = append(testCase.TestSteps, &StepTestCaseWithOptionalArgs{
 				step: step,
 			})

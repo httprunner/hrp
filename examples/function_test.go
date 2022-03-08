@@ -20,7 +20,7 @@ func TestCaseCallFunction(t *testing.T) {
 			hrp.NewStep("get with params").
 				GET("/get").
 				WithParams(map[string]interface{}{"foo1": "${gen_random_string($n)}", "foo2": "${max($a, $b)}", "foo3": "Foo3"}).
-				WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 				Extract().
 				WithJmesPath("body.args.foo1", "varFoo1").
 				Validate().
@@ -33,7 +33,7 @@ func TestCaseCallFunction(t *testing.T) {
 				AssertContainedBy("body.args.foo3", "this is Foo3 test", "check contained by"), // notice: request params value will be converted to string
 			hrp.NewStep("post json data with functions").
 				POST("/post").
-				WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 				WithBody(map[string]interface{}{"foo1": "${gen_random_string($n)}", "foo2": "${max($a, $b)}"}).
 				Validate().
 				AssertEqual("status_code", 200, "check status code").

@@ -8,7 +8,7 @@ var (
 	stepGET = NewStep("get with params").
 		GET("/get").
 		WithParams(map[string]interface{}{"foo1": "bar1", "foo2": "bar2"}).
-		WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+		WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 		WithCookies(map[string]string{"user": "debugtalk"}).
 		Validate().
 		AssertEqual("status_code", 200, "check status code").
@@ -18,7 +18,7 @@ var (
 	stepPOSTData = NewStep("post form data").
 			POST("/post").
 			WithParams(map[string]interface{}{"foo1": "bar1", "foo2": "bar2"}).
-			WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus", "Content-Type": "application/x-www-form-urlencoded"}).
+			WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus", "Content-Type": "application/x-www-form-urlencoded"}).
 			WithBody("a=1&b=2").
 			WithCookies(map[string]string{"user": "debugtalk"}).
 			Validate().

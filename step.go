@@ -22,6 +22,12 @@ func (c *TConfig) SetBaseURL(baseURL string) *TConfig {
 	return c
 }
 
+// SetHeaders sets global headers for current testcase.
+func (c *TConfig) SetHeaders(headers map[string]interface{}) *TConfig {
+	c.Headers = headers
+	return c
+}
+
 // SetVerifySSL sets whether to verify SSL for current testcase.
 func (c *TConfig) SetVerifySSL(verify bool) *TConfig {
 	c.Verify = verify
@@ -150,7 +156,7 @@ func (s *StepRequest) PATCH(url string) *StepRequestWithOptionalArgs {
 }
 
 // CallRefCase calls a referenced testcase.
-func (s *StepRequest) CallRefCase(tc *TestCase) *StepTestCaseWithOptionalArgs {
+func (s *StepRequest) CallRefCase(tc ITestCase) *StepTestCaseWithOptionalArgs {
 	s.step.TestCase = tc
 	return &StepTestCaseWithOptionalArgs{
 		step: s.step,
@@ -221,7 +227,7 @@ func (s *StepRequestWithOptionalArgs) WithParams(params map[string]interface{}) 
 }
 
 // WithHeaders sets HTTP request headers for current step.
-func (s *StepRequestWithOptionalArgs) WithHeaders(headers map[string]string) *StepRequestWithOptionalArgs {
+func (s *StepRequestWithOptionalArgs) WithHeaders(headers map[string]interface{}) *StepRequestWithOptionalArgs {
 	s.step.Request.Headers = headers
 	return s
 }
@@ -253,7 +259,7 @@ func (s *StepRequestWithOptionalArgs) Validate() *StepRequestValidation {
 
 // Extract switches to step extraction.
 func (s *StepRequestWithOptionalArgs) Extract() *StepRequestExtraction {
-	s.step.Extract = make(map[string]string)
+	s.step.Extract = make(map[string]interface{})
 	return &StepRequestExtraction{
 		step: s.step,
 	}
@@ -295,7 +301,7 @@ func (s *StepTestCaseWithOptionalArgs) Name() string {
 	if s.step.Name != "" {
 		return s.step.Name
 	}
-	return s.step.TestCase.Config.Name
+	return s.step.TestCase.(*TestCase).Config.Name
 }
 
 func (s *StepTestCaseWithOptionalArgs) Type() string {

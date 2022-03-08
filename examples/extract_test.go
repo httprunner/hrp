@@ -21,7 +21,7 @@ func TestCaseExtractStepSingle(t *testing.T) {
 				}).
 				GET("/get").
 				WithParams(map[string]interface{}{"foo1": "$var1", "foo2": "bar2"}).
-				WithHeaders(map[string]string{"User-Agent": "$agent"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "$agent"}).
 				Extract().
 				WithJmesPath("status_code", "statusCode").
 				WithJmesPath("headers.\"Content-Type\"", "contentType").
@@ -55,7 +55,7 @@ func TestCaseExtractStepAssociation(t *testing.T) {
 				}).
 				GET("/get").
 				WithParams(map[string]interface{}{"foo1": "$var1", "foo2": "bar2"}).
-				WithHeaders(map[string]string{"User-Agent": "$agent"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "$agent"}).
 				Extract().
 				WithJmesPath("status_code", "statusCode").
 				WithJmesPath("headers.\"Content-Type\"", "contentType").
@@ -68,7 +68,7 @@ func TestCaseExtractStepAssociation(t *testing.T) {
 				AssertEqual("body.headers.\"user-agent\"", "HttpRunnerPlus", "check header user agent"),
 			hrp.NewStep("post json data").
 				POST("/post").
-				WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 				WithBody(map[string]interface{}{"foo1": "bar1", "foo2": "bar2"}).
 				Validate().
 				AssertEqual("status_code", "$statusCode", "check status code"). // assert with extracted variable from previous step

@@ -209,7 +209,7 @@ func (s *tStep) makeRequestCookies(entry *Entry) error {
 }
 
 func (s *tStep) makeRequestHeaders(entry *Entry) error {
-	s.Request.Headers = make(map[string]string)
+	s.Request.Headers = make(map[string]interface{})
 	for _, header := range entry.Request.Headers {
 		if strings.EqualFold(header.Name, "cookie") {
 			continue

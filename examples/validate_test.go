@@ -20,7 +20,7 @@ func TestCaseValidateStep(t *testing.T) {
 				}).
 				GET("/get").
 				WithParams(map[string]interface{}{"foo1": "$var1", "foo2": "bar2"}).
-				WithHeaders(map[string]string{"User-Agent": "$agent"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "$agent"}).
 				Extract().
 				WithJmesPath("body.args.foo1", "varFoo1").
 				Validate().
@@ -36,7 +36,7 @@ func TestCaseValidateStep(t *testing.T) {
 				}).
 				GET("/get").
 				WithParams(map[string]interface{}{"foo1": "$var1", "foo2": "bar2"}).
-				WithHeaders(map[string]string{"User-Agent": "$agent"}).
+				WithHeaders(map[string]interface{}{"User-Agent": "$agent"}).
 				Extract().
 				WithJmesPath("status_code", "statusCode").
 				WithJmesPath("headers.\"Content-Type\"", "contentType").

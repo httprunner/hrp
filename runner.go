@@ -362,6 +362,10 @@ func (r *caseRunner) runStep(index int, caseConfig *TConfig) (stepResult *stepDa
 			log.Error().Err(err).Msg("run referenced testcase step failed")
 		}
 	} else {
+		// override headers
+		if caseConfig.Headers != nil {
+			copiedStep.Request.Headers = mergeVariables(copiedStep.Request.Headers, caseConfig.Headers)
+		}
 		// parse step request url
 		var requestUrl interface{}
 		requestUrl, err = r.parser.parseString(copiedStep.Request.URL, copiedStep.Variables)
@@ -648,11 +652,11 @@ func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err erro
 			if strings.HasPrefix(key, ":") {
 				continue
 			}
-			req.Header.Add(key, value)
+			req.Header.Add(key, value.(string))
 
 			// prepare content length
 			if strings.EqualFold(key, "Content-Length") && value != "" {
-				if l, err := strconv.ParseInt(value, 10, 64); err == nil {
+				if l, err := strconv.ParseInt(value.(string), 10, 64); err == nil {
 					req.ContentLength = l
 				}
 			}

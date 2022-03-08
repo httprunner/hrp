@@ -25,7 +25,7 @@ var rendezvousTestcase = &hrp.TestCase{
 		hrp.NewStep("get with params").
 			GET("/get").
 			WithParams(map[string]interface{}{"foo1": "foo1", "foo2": "foo2"}).
-			WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+			WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 			Extract().
 			WithJmesPath("body.args.foo1", "varFoo1").
 			Validate().
@@ -36,7 +36,7 @@ var rendezvousTestcase = &hrp.TestCase{
 			WithTimeout(2000),
 		hrp.NewStep("post json data with functions").
 			POST("/post").
-			WithHeaders(map[string]string{"User-Agent": "HttpRunnerPlus"}).
+			WithHeaders(map[string]interface{}{"User-Agent": "HttpRunnerPlus"}).
 			WithBody(map[string]interface{}{"foo1": "foo1", "foo2": "foo2"}).
 			Validate().
 			AssertEqual("status_code", 200, "check status code").

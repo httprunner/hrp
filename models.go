@@ -26,6 +26,7 @@ type TConfig struct {
 	Name              string                 `json:"name" yaml:"name"` // required
 	Verify            bool                   `json:"verify,omitempty" yaml:"verify,omitempty"`
 	BaseURL           string                 `json:"base_url,omitempty" yaml:"base_url,omitempty"`
+	Headers           map[string]interface{} `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Variables         map[string]interface{} `json:"variables,omitempty" yaml:"variables,omitempty"`
 	Parameters        map[string]interface{} `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	ParametersSetting *TParamsConfig         `json:"parameters_setting,omitempty" yaml:"parameters_setting,omitempty"`
@@ -94,7 +95,7 @@ type Request struct {
 	Method         string                 `json:"method" yaml:"method"` // required
 	URL            string                 `json:"url" yaml:"url"`       // required
 	Params         map[string]interface{} `json:"params,omitempty" yaml:"params,omitempty"`
-	Headers        map[string]string      `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Headers        map[string]interface{} `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Cookies        map[string]string      `json:"cookies,omitempty" yaml:"cookies,omitempty"`
 	Body           interface{}            `json:"body,omitempty" yaml:"body,omitempty"`
 	Timeout        float32                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -115,15 +116,26 @@ type Validator struct {
 type TStep struct {
 	Name          string                 `json:"name" yaml:"name"` // required
 	Request       *Request               `json:"request,omitempty" yaml:"request,omitempty"`
-	TestCase      *TestCase              `json:"testcase,omitempty" yaml:"testcase,omitempty"`
+	API           string                 `json:"api,omitempty" yaml:"api,omitempty"`
+	TestCase      interface{}            `json:"testcase,omitempty" yaml:"testcase,omitempty"`
 	Transaction   *Transaction           `json:"transaction,omitempty" yaml:"transaction,omitempty"`
 	Rendezvous    *Rendezvous            `json:"rendezvous,omitempty" yaml:"rendezvous,omitempty"`
 	Variables     map[string]interface{} `json:"variables,omitempty" yaml:"variables,omitempty"`
 	SetupHooks    []string               `json:"setup_hooks,omitempty" yaml:"setup_hooks,omitempty"`
 	TeardownHooks []string               `json:"teardown_hooks,omitempty" yaml:"teardown_hooks,omitempty"`
-	Extract       map[string]string      `json:"extract,omitempty" yaml:"extract,omitempty"`
+	Extract       map[string]interface{} `json:"extract,omitempty" yaml:"extract,omitempty"`
 	Validators    []Validator            `json:"validate,omitempty" yaml:"validate,omitempty"`
 	Export        []string               `json:"export,omitempty" yaml:"export,omitempty"`
+}
+
+func (ts *TStep) ToTCase() *TCase {
+	return &TCase{
+		Config: &TConfig{
+			Name: ts.Name,
+			Path: ts.API,
+		},
+		TestSteps: []*TStep{ts},
+	}
 }
 
 type stepType string
