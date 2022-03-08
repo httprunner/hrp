@@ -7,7 +7,6 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -33,7 +32,8 @@ import (
 
 	"github.com/httprunner/hrp/internal/builtin"
 	"github.com/httprunner/hrp/internal/ga"
-	pluginInternal "github.com/httprunner/hrp/plugin/inner"
+	"github.com/httprunner/hrp/internal/json"
+	pluginInternal "github.com/httprunner/hrp/plugin/go"
 )
 
 const (
@@ -81,7 +81,7 @@ func (r *HRPRunner) SetClientTransport(maxConns int, disableKeepAlive bool, disa
 	r.client.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		DialContext: (&net.Dialer{
-			Timeout: 30 * time.Second,
+			Timeout: 15 * time.Second,
 		}).DialContext,
 		MaxIdleConns:        0,
 		MaxIdleConnsPerHost: maxConns,
