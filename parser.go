@@ -1,7 +1,7 @@
 package hrp
 
 import (
-	"encoding/json"
+	builtinJSON "encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -13,7 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/httprunner/hrp/internal/builtin"
-	pluginInternal "github.com/httprunner/hrp/plugin/inner"
+	pluginInternal "github.com/httprunner/hrp/plugin/go"
+	pluginUtils "github.com/httprunner/hrp/plugin/utils"
 )
 
 func newParser() *parser {
@@ -68,7 +69,7 @@ func (p *parser) parseData(raw interface{}, variablesMapping map[string]interfac
 	switch rawValue.Kind() {
 	case reflect.String:
 		// json.Number
-		if rawValue, ok := raw.(json.Number); ok {
+		if rawValue, ok := raw.(builtinJSON.Number); ok {
 			return parseJSONNumber(rawValue)
 		}
 		// other string
@@ -108,7 +109,7 @@ func (p *parser) parseData(raw interface{}, variablesMapping map[string]interfac
 	}
 }
 
-func parseJSONNumber(raw json.Number) (interface{}, error) {
+func parseJSONNumber(raw builtinJSON.Number) (interface{}, error) {
 	if strings.Contains(raw.String(), ".") {
 		// float64
 		return raw.Float64()
@@ -252,7 +253,7 @@ func (p *parser) callFunc(funcName string, arguments ...interface{}) (interface{
 	fn := reflect.ValueOf(function)
 
 	// call with builtin function
-	return pluginInternal.CallFunc(fn, arguments...)
+	return pluginUtils.CallFunc(fn, arguments...)
 }
 
 // merge two variables mapping, the first variables have higher priority
