@@ -1,8 +1,18 @@
 # Release History
 
-## v0.6.3 (2022-02-22)
+## v0.7.0 (2022-03-04)
+
+- feat: both support gPRC(default) and net/rpc mode in hashicorp plugin, switch with environment `HRP_PLUGIN_TYPE`
+- refactor: replace builtin json library with json-iterator/go to improve performance
+
+## v0.6.3 (2022-03-04)
 
 - feat: support customized setup/teardown hooks (variable assignment not supported)
+- feat: add flag `--log-plugin` to turn on plugin logging
+- change: add short flag `-c` for `--continue-on-failure`
+- change: use `--log-requests-off` flag to turn off request & response details logging
+- fix: support posting body in json array format
+- fix: testcase format compatibility with HttpRunner
 
 ## v0.6.2 (2022-02-22)
 

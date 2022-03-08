@@ -9,7 +9,7 @@ import (
 
 	"github.com/httprunner/hrp/internal/boomer"
 	"github.com/httprunner/hrp/internal/ga"
-	pluginInternal "github.com/httprunner/hrp/plugin/inner"
+	pluginInternal "github.com/httprunner/hrp/plugin/go"
 )
 
 func NewBoomer(spawnCount int, spawnRate float64) *HRPBoomer {
@@ -68,6 +68,8 @@ func (b *HRPBoomer) Quit() {
 
 func (b *HRPBoomer) convertBoomerTask(testcase *TestCase, rendezvousList []*Rendezvous) *boomer.Task {
 	hrpRunner := NewRunner(nil)
+	// set client transport for high concurrency load testing
+	hrpRunner.SetClientTransport(b.GetSpawnCount(), b.GetDisableKeepAlive(), b.GetDisableCompression())
 	config := testcase.Config
 
 	// each testcase has its own plugin process

@@ -2,7 +2,7 @@ package hrp
 
 import (
 	"bytes"
-	"encoding/json"
+	builtinJSON "encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/httprunner/hrp/internal/builtin"
+	"github.com/httprunner/hrp/internal/json"
 )
 
 func newResponseObject(t *testing.T, parser *parser, resp *http.Response) (*responseObject, error) {
@@ -114,8 +115,12 @@ func (v *responseObject) Extract(extractors map[string]interface{}) map[string]i
 	return extractMapping
 }
 
-func (v *responseObject) Validate(validators []Validator, variablesMapping map[string]interface{}) (err error) {
-	for _, validator := range validators {
+func (v *responseObject) Validate(iValidators []interface{}, variablesMapping map[string]interface{}) (err error) {
+	for _, iValidator := range iValidators {
+		validator, ok := iValidator.(Validator)
+		if !ok {
+			return errors.New("validator type error")
+		}
 		// parse check value
 		checkItem := validator.Check
 		var checkValue interface{}
@@ -160,6 +165,7 @@ func (v *responseObject) Validate(validators []Validator, variablesMapping map[s
 		}
 		v.validationResults = append(v.validationResults, validResult)
 		log.Info().
+			Str("checkExpr", validator.Check).
 			Str("assertMethod", assertMethod).
 			Interface("expectValue", expectValue).
 			Interface("checkValue", checkValue).
@@ -168,7 +174,8 @@ func (v *responseObject) Validate(validators []Validator, variablesMapping map[s
 		if !result {
 			v.t.Fail()
 			return errors.New(fmt.Sprintf(
-				"do assertion failed, assertMethod: %v, checkValue: %v, expectValue: %v",
+				"do assertion failed, checkExpr: %v, assertMethod: %v, checkValue: %v, expectValue: %v",
+				validator.Check,
 				assertMethod,
 				checkValue,
 				expectValue,
@@ -184,7 +191,7 @@ func (v *responseObject) searchJmespath(expr string) interface{} {
 		log.Error().Str("expr", expr).Err(err).Msg("search jmespath failed")
 		return expr // jmespath not found, return the expression
 	}
-	if number, ok := checkValue.(json.Number); ok {
+	if number, ok := checkValue.(builtinJSON.Number); ok {
 		checkNumber, err := parseJSONNumber(number)
 		if err != nil {
 			log.Error().Interface("json number", number).Err(err).Msg("convert json number failed")

@@ -7,10 +7,10 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -32,7 +32,8 @@ import (
 
 	"github.com/httprunner/hrp/internal/builtin"
 	"github.com/httprunner/hrp/internal/ga"
-	pluginInternal "github.com/httprunner/hrp/plugin/inner"
+	"github.com/httprunner/hrp/internal/json"
+	pluginInternal "github.com/httprunner/hrp/plugin/go"
 )
 
 const (
@@ -72,6 +73,22 @@ type HRPRunner struct {
 	saveTests     bool
 	genHTMLReport bool
 	client        *http.Client
+}
+
+// SetClientTransport configures transport of http client for high concurrency load testing
+func (r *HRPRunner) SetClientTransport(maxConns int, disableKeepAlive bool, disableCompression bool) *HRPRunner {
+	log.Info().Int("maxConns", maxConns).Msg("[init] SetClientTransport")
+	r.client.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext: (&net.Dialer{
+			Timeout: 15 * time.Second,
+		}).DialContext,
+		MaxIdleConns:        0,
+		MaxIdleConnsPerHost: maxConns,
+		DisableKeepAlives:   disableKeepAlive,
+		DisableCompression:  disableCompression,
+	}
+	return r
 }
 
 // SetFailfast configures whether to stop running when one step fails.
@@ -638,7 +655,6 @@ func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err erro
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
 		ProtoMinor: 1,
-		Close:      true, // prevent the connection from being re-used
 	}
 
 	// prepare request headers
@@ -706,6 +722,15 @@ func (r *caseRunner) runStepRequest(step *TStep) (stepResult *stepData, err erro
 		data, err := r.parser.parseData(step.Request.Body, step.Variables)
 		if err != nil {
 			return stepResult, err
+		}
+		// check request body format if Content-Type specified as application/json
+		if strings.HasPrefix(req.Header.Get("Content-Type"), "application/json") {
+			switch data.(type) {
+			case bool, float64, string, map[string]interface{}, []interface{}, nil:
+				break
+			default:
+				return stepResult, errors.Errorf("request body type inconsistent with Content-Type: %v", req.Header.Get("Content-Type"))
+			}
 		}
 		requestMap["body"] = data
 		var dataBytes []byte

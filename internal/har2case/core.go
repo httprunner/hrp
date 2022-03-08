@@ -2,7 +2,6 @@ package har2case
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 	"github.com/httprunner/hrp"
 	"github.com/httprunner/hrp/internal/builtin"
 	"github.com/httprunner/hrp/internal/ga"
+	"github.com/httprunner/hrp/internal/json"
 )
 
 const (
@@ -145,7 +145,7 @@ func (h *har) prepareTestStep(entry *Entry) (*hrp.TStep, error) {
 	step := &tStep{
 		TStep: hrp.TStep{
 			Request:    &hrp.Request{},
-			Validators: make([]hrp.Validator, 0),
+			Validators: make([]interface{}, 0),
 		},
 	}
 	if err := step.makeRequestMethod(entry); err != nil {
